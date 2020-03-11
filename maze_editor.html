@@ -1,3 +1,4 @@
+<!-- Copyright (C) 2020 curs0r -->
 <html>
 <head>
 <meta charset="UTF-8"/>
@@ -5,9 +6,15 @@
 <script type="text/javascript" src="https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js"></script>
 </head>
 <body>
-	<table id="maze" ondragstart="return false;" style="width:741px; height:741px; table-layout:fixed; font-size:14px" border="0" cellspacing="0" cellpadding="1">
+	<table id="maze" ondragstart="return false;" style="width:741px; height:741px; table-layout:fixed; font-size:12px; float: left;" border="0" cellspacing="0" cellpadding="1">
 	</table>
-	<p id="t_dist"></p>
+	<div style="margin-left: 20px; float: left;">
+		<h4>GemTD Map Editor</h4>
+		<p id="p_info"></p>
+
+		<p>分享码:</p>
+		<textarea id="t_code"></textarea>
+	</div>
 </div>
 </body>
 <script type="text/javascript">
@@ -18,21 +25,26 @@ start_cell = null;
 last_cell = null;
 
 function refresh_cell(x, y) {
-	var is_point = false;
-	for (var p of path_points) {
-		if (p[0] == x && p[1] == y) {
-			is_point = true;
+	var point_idx = -1;
+	for (var i = 0; i < path_points.length; i++) {
+		if (path_points[i][0] == x && path_points[i][1] == y) {
+			point_idx = i;
 			break;
 		}
 	}
-	if (is_point) {
+	if (point_idx >= 0) {
+		$("#c"+x+"_"+y).html('<div style="position:absolute;left:' + (y*20 + 10) + 'px;top:' + (x*20 + 10) + 'px;background-color:transparent;overflow:hidden;height:20px;width:20px;">' + point_idx + '</div>');
 		$("#c"+x+"_"+y).css('background-color', 'red');
 		maze_info[x][y] = 0;
 	} else if (Math.max(x,y) < 9 || Math.min(x,y) > 27) {
 		$("#c"+x+"_"+y).css('background-color', '#FBE946');
 		maze_info[x][y] = 0;
 	} else if (maze_info[x][y] == 0) {
-		$("#c"+x+"_"+y).css('background-color', 'white');
+		if (x == 18 || y == 18) {
+			$("#c"+x+"_"+y).css('background-color', '#ECECEC');
+		} else {
+			$("#c"+x+"_"+y).css('background-color', 'white');
+		}
 	} else {
 		$("#c"+x+"_"+y).css('background-color', 'black');
 	}
@@ -89,7 +101,6 @@ function spfa(sp, ep, maze) {
 			}
 		}
 	}
-	console.log(dis);
 	return dis[ep[0]][ep[1]];
 }
 function on_maze_changed() {
@@ -98,15 +109,42 @@ function on_maze_changed() {
 	for (var i = 0; i < path_points.length - 1; i++) {
 		dis = spfa(path_points[i], path_points[i+1], maze_info);
 		sum_dis += dis;
-		str = str + "[" + (i+1) + " -> " + (i+2) + "] " + (Math.round(dis * 100)/100) + "\n";
+		str = str + "[" + (i+1) + "点 -> " + (i+2) + "点]: " + (Math.round(dis * 100)/100) + "\n";
 	}
 	if (sum_dis < 9999) {
-		str = str + "总长:" + (Math.round(sum_dis * 100)/100);
+		str = str + "\n总长:" + (Math.round(sum_dis * 100)/100);
 	} else {
 		str = str + "迷宫不通";
 	}
-	obj = $("#t_dist").text(str);
+	var sum_stone = 0;
+	var b_arr = [];
+	var curr_s = 0;
+	var s_len = 0;
+
+	for (var i of maze_info) {
+		for (var j of i) {
+			sum_stone+=j;
+			if (curr_s == j) {
+				s_len ++;
+			} else {
+				if (s_len != 0) {
+					b_arr.push(s_len);
+					s_len = 0;
+				}
+				curr_s = j;
+			}
+		}
+	}
+	if (s_len != 0) {b_arr.push(s_len);}
+
+	str = str + "\n石头数:" + sum_stone;
+	
+	obj = $("#p_info").text(str);
 	obj.html(obj.html().replace(/\n/g,'<br/>'));
+
+	$("#t_code").text(btoa(b_arr).length + ":" + btoa(b_arr));
+
+	localStorage.setItem("maze", maze_info);
 }
 function getxy(id) {
 	var arr = id.slice(1).split('_');
@@ -150,7 +188,7 @@ function getline(lxd, xd, lyd, yd) {
 $(function() {
 	//read maze from localStorage
 	var storage_maze = localStorage.getItem("maze");
-	storage_maze = storage_maze instanceof String ? storage_maze.split(',') : null;
+	storage_maze = (typeof(storage_maze) == "string") ? storage_maze.split(',') : null;
 	for (var i = 0; i < 37; i++) {
 		$("#maze").append('<tr id="r' + i + '"></tr>');
 		maze_info[i] = new Array(37);
@@ -164,7 +202,7 @@ $(function() {
 		}
 	}
 	on_maze_changed();
-	
+
 	$("#maze tr td").css('border', '1px solid gray');
 	
 	// disable rightclick menu
@@ -189,7 +227,6 @@ $(function() {
 	});
 	$("#maze").on("mousedown","td",function(e){
 		console.log($(this)[0].id);
-		console.log(e.which);
 		e.preventDefault();
 		last_cell = start_cell = $(this)[0];
 		var r = getxy($(this)[0].id);
@@ -197,7 +234,6 @@ $(function() {
 		$(this).css('background-color', '#BBBBBB');
 	});
 	$("#maze").on("mouseup","",function(e){
-		console.log(e.which);
 		if (start_cell != null && last_cell != null) {
 			var xy1 = getxy(start_cell.id);
 			var xy2 = getxy(last_cell.id);
@@ -214,8 +250,6 @@ $(function() {
 			}
 			on_maze_changed();
 		}
-		
-		localStorage.setItem("maze", maze_info);
 		
 		start_cell = null
 		$("#maze tr td").css('border', '1px solid gray');
