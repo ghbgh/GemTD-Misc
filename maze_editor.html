@@ -6,18 +6,51 @@
 <script type="text/javascript" src="https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js"></script>
 </head>
 <body>
-	<table id="maze" ondragstart="return false;" style="width:741px; height:741px; table-layout:fixed; font-size:12px; float: left;" border="0" cellspacing="0" cellpadding="1">
-	</table>
-	<div style="margin-left: 20px; float: left;">
-		<h4>GemTD Map Editor</h4>
-		<p id="p_info"></p>
+	<div>
+		<table id="maze" ondragstart="return false;" style="width:741px; height:741px; table-layout:fixed; font-size:12px; float: left;" border="0" cellspacing="0" cellpadding="1">
+		</table>
+		<div style="margin-left: 20px; float: left;">
+			<h4>GemTD Map Editor</h4>
+			<p id="p_info"></p>
 
-		<p>分享码:</p>
-		<textarea id="t_code"></textarea>
+			<p>p.s. 不定期更新(咕咕咕)</p>
+		</div>
+	</div>
+	<div style="clear:both">
+		<div>分享迷宫:</div>
+		<a id="t_code"></a>
 	</div>
 </div>
 </body>
 <script type="text/javascript">
+var b64t="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890+-";
+function BinToB64(arr){
+	var a = 0, c = 0, res="";
+	for (var i = 0; i < arr.length; i++){
+		a = a * 2 + arr[i];
+		c++;
+		if (c == 6){
+			res += b64t[a];
+			c=a=0;
+		}
+	}
+	if (c > 0)
+	{
+		res += b64t[a];
+	}
+	return res;
+}
+function B64ToBin(b){
+	if (typeof(b) != "string") return null;
+	var res = [];
+	for (var a of b){
+		var x = b64t.indexOf(a);
+		for (var i = 5; i >= 0; i--){
+			res.push(x>>i&1);
+		}
+	}
+	return res;
+}
 
 path_points = [[2,4],[18,4],[18,32],[4,32],[4,18],[32,18],[32,34]]
 maze_info = new Array(37);
@@ -41,7 +74,7 @@ function refresh_cell(x, y) {
 		maze_info[x][y] = 0;
 	} else if (maze_info[x][y] == 0) {
 		if (x == 18 || y == 18) {
-			$("#c"+x+"_"+y).css('background-color', '#ECECEC');
+			$("#c"+x+"_"+y).css('background-color', '#DDDDDD');
 		} else {
 			$("#c"+x+"_"+y).css('background-color', 'white');
 		}
@@ -120,10 +153,12 @@ function on_maze_changed() {
 	var b_arr = [];
 	var curr_s = 0;
 	var s_len = 0;
+	var flat_maze = [];
 
 	for (var i of maze_info) {
 		for (var j of i) {
 			sum_stone+=j;
+			flat_maze.push(j);
 			if (curr_s == j) {
 				s_len ++;
 			} else {
@@ -142,9 +177,12 @@ function on_maze_changed() {
 	obj = $("#p_info").text(str);
 	obj.html(obj.html().replace(/\n/g,'<br/>'));
 
-	$("#t_code").text(btoa(b_arr).length + ":" + btoa(b_arr));
-
-	localStorage.setItem("maze", maze_info);
+	//console.log(b_arr);
+	var url = window.location.protocol + "//" + window.location.host + window.location.pathname;
+	var b64 = BinToB64(flat_maze);
+	url = url + "?" + b64;
+	$("#t_code").text(url);
+	$("#t_code").attr("href",url);
 }
 function getxy(id) {
 	var arr = id.slice(1).split('_');
@@ -189,6 +227,26 @@ $(function() {
 	//read maze from localStorage
 	var storage_maze = localStorage.getItem("maze");
 	storage_maze = (typeof(storage_maze) == "string") ? storage_maze.split(',') : null;
+	if (storage_maze != null) {
+		for (var i = 0; i < 37*37; i++) {
+			if (i >= storage_maze.length) storage_maze[i] = 0;
+			else storage_maze[i] = parseInt(storage_maze[i]) != 0 ? 1:0;
+		}
+	}
+	
+	//read maze after # if exist
+	var maze_code = window.location.search.substring(1);
+	console.log(maze_code);
+	if (maze_code != null && maze_code != "") {
+		var c = B64ToBin(maze_code);
+		console.log(c);
+		storage_maze = [];
+		for (var i = 0; i < 37*37; i++) {
+			if (i >= c.length) storage_maze.push(0);
+			else storage_maze[i] = c[i] != 0 ? 1:0;
+		}
+	}
+	
 	for (var i = 0; i < 37; i++) {
 		$("#maze").append('<tr id="r' + i + '"></tr>');
 		maze_info[i] = new Array(37);
@@ -196,12 +254,13 @@ $(function() {
 			$("#maze tr#r" + i).append('<td id="c' + i + '_' + j + '"></td>');
 			maze_info[i][j] = 0;
 			if (storage_maze instanceof Array) {
-				maze_info[i][j] = parseInt(storage_maze[i*37+j]) == 1 ? 1 : 0;
+				maze_info[i][j] = storage_maze[i*37+j];
 			}
 			refresh_cell(i, j);
 		}
 	}
 	on_maze_changed();
+	//localStorage.setItem("maze", maze_info);
 
 	$("#maze tr td").css('border', '1px solid gray');
 	
@@ -249,6 +308,7 @@ $(function() {
 				refresh_cell(p[0], p[1]);
 			}
 			on_maze_changed();
+			localStorage.setItem("maze", maze_info);
 		}
 		
 		start_cell = null
