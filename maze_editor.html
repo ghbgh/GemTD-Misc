@@ -1,9 +1,11 @@
-<!-- Copyright (C) 2020 curs0r -->
+<!-- Copyright (C) 2020 curs0r(小磁怪) -->
 <html>
 <head>
 <meta charset="UTF-8"/>
-<!-- <script type="text/css" src="https://cdn.bootcss.com/twitter-bootstrap/4.4.1/css/bootstrap.min.css"></script> -->
+<link href="https://cdn.bootcss.com/twitter-bootstrap/3.4.1/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.bootcss.com/toastr.js/2.1.4/toastr.css" rel="stylesheet">
 <script type="text/javascript" src="https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js"></script>
+<script type="text/javascript" src="https://cdn.bootcss.com/toastr.js/2.1.4/toastr.min.js"></script>
 </head>
 <body>
 	<div>
@@ -13,11 +15,35 @@
 			<h4>GemTD Map Editor</h4>
 			<p id="p_info"></p>
 
-			<p>p.s. 不定期更新(咕咕咕)</p>
+			<button class="btn btn-danger" id="btnclear">清空</button>
+			<br/>
+			<br/>
+			<button class="btn btn-success" id="btnsave1">存至迷宫1</button>
+			<button class="btn btn-warning" id="btnload1">读取迷宫1</button>
+			<br/>
+			<br/>
+			<button class="btn btn-success" id="btnsave2">存至迷宫2</button>
+			<button class="btn btn-warning" id="btnload2">读取迷宫2</button>
+			<br/>
+			<br/>
+			<button class="btn btn-success" id="btnsave3">存至迷宫3</button>
+			<button class="btn btn-warning" id="btnload3">读取迷宫3</button>
+			<br/>
+			<br/>
+			<button class="btn btn-success" id="btnsave4">存至迷宫4</button>
+			<button class="btn btn-warning" id="btnload4">读取迷宫4</button>
+			<br/>
+			<br/>
+			<button class="btn btn-success" id="btnsave5">存至迷宫5</button>
+			<button class="btn btn-warning" id="btnload5">读取迷宫5</button>
+			<br/>
+			<br/>
+			<p>p.s. 可使用鼠标左右(中?)键拖动设计迷宫，迷宫保存在网页缓存中, 请及时保管页面下方链接</p>
+			<p>不定期更新(by. 小磁怪咕咕咕)</p>
 		</div>
 	</div>
 	<div style="clear:both">
-		<div>分享迷宫:</div>
+		<div>分享当前迷宫:</div>
 		<a id="t_code"></a>
 	</div>
 </div>
@@ -51,6 +77,18 @@ function B64ToBin(b){
 	}
 	return res;
 }
+function MazeToB64(m){
+	var flat_maze = [];
+	for (var i of maze_info) {
+		for (var j of i) {
+			flat_maze.push(j);
+		}
+	}
+	var b64 = BinToB64(flat_maze);
+	b64 = b64.replace(/(A*$)/g,"")
+	if(b64 == "") b64 = "A";
+	return b64;
+}
 
 path_points = [[2,4],[18,4],[18,32],[4,32],[4,18],[32,18],[32,34]]
 maze_info = new Array(37);
@@ -66,7 +104,7 @@ function refresh_cell(x, y) {
 		}
 	}
 	if (point_idx >= 0) {
-		$("#c"+x+"_"+y).html('<div style="position:absolute;left:' + (y*20 + 10) + 'px;top:' + (x*20 + 10) + 'px;background-color:transparent;overflow:hidden;height:20px;width:20px;">' + point_idx + '</div>');
+		$("#c"+x+"_"+y).html('<div style="position:absolute;left:' + (y*20 + 6) + 'px;top:' + (x*20 + 3) + 'px;background-color:transparent;overflow:hidden;height:20px;width:20px;">' + point_idx + '</div>');
 		$("#c"+x+"_"+y).css('background-color', 'red');
 		maze_info[x][y] = 0;
 	} else if (Math.max(x,y) < 9 || Math.min(x,y) > 27) {
@@ -142,45 +180,28 @@ function on_maze_changed() {
 	for (var i = 0; i < path_points.length - 1; i++) {
 		dis = spfa(path_points[i], path_points[i+1], maze_info);
 		sum_dis += dis;
-		str = str + "[" + (i+1) + "点 -> " + (i+2) + "点]: " + (Math.round(dis * 100)/100) + "\n";
+		str = str + "[" + (i) + "点 -> " + (i+1) + "点]: " + (Math.round(dis * 100)/100) + "\n";
 	}
 	if (sum_dis < 9999) {
 		str = str + "\n总长:" + (Math.round(sum_dis * 100)/100);
 	} else {
-		str = str + "迷宫不通";
+		str = str + "\n迷宫不通";
 	}
 	var sum_stone = 0;
-	var b_arr = [];
-	var curr_s = 0;
-	var s_len = 0;
-	var flat_maze = [];
-
 	for (var i of maze_info) {
 		for (var j of i) {
 			sum_stone+=j;
-			flat_maze.push(j);
-			if (curr_s == j) {
-				s_len ++;
-			} else {
-				if (s_len != 0) {
-					b_arr.push(s_len);
-					s_len = 0;
-				}
-				curr_s = j;
-			}
 		}
 	}
-	if (s_len != 0) {b_arr.push(s_len);}
 
 	str = str + "\n石头数:" + sum_stone;
 	
 	obj = $("#p_info").text(str);
 	obj.html(obj.html().replace(/\n/g,'<br/>'));
 
-	//console.log(b_arr);
 	var url = window.location.protocol + "//" + window.location.host + window.location.pathname;
-	var b64 = BinToB64(flat_maze);
-	url = url + "?" + b64;
+
+	url = url + "?" + MazeToB64(maze_info);
 	$("#t_code").text(url);
 	$("#t_code").attr("href",url);
 }
@@ -226,25 +247,13 @@ function getline(lxd, xd, lyd, yd) {
 $(function() {
 	//read maze from localStorage
 	var storage_maze = localStorage.getItem("maze");
-	storage_maze = (typeof(storage_maze) == "string") ? storage_maze.split(',') : null;
-	if (storage_maze != null) {
-		for (var i = 0; i < 37*37; i++) {
-			if (i >= storage_maze.length) storage_maze[i] = 0;
-			else storage_maze[i] = parseInt(storage_maze[i]) != 0 ? 1:0;
-		}
-	}
-	
+	storage_maze = storage_maze != null ? B64ToBin(storage_maze) : null;
 	//read maze after # if exist
 	var maze_code = window.location.search.substring(1);
-	console.log(maze_code);
 	if (maze_code != null && maze_code != "") {
 		var c = B64ToBin(maze_code);
 		console.log(c);
-		storage_maze = [];
-		for (var i = 0; i < 37*37; i++) {
-			if (i >= c.length) storage_maze.push(0);
-			else storage_maze[i] = c[i] != 0 ? 1:0;
-		}
+		storage_maze = c;
 	}
 	
 	for (var i = 0; i < 37; i++) {
@@ -254,7 +263,9 @@ $(function() {
 			$("#maze tr#r" + i).append('<td id="c' + i + '_' + j + '"></td>');
 			maze_info[i][j] = 0;
 			if (storage_maze instanceof Array) {
-				maze_info[i][j] = storage_maze[i*37+j];
+				var a = storage_maze[i*37+j];
+				if (a == null) a = 0;
+				maze_info[i][j] = a;
 			}
 			refresh_cell(i, j);
 		}
@@ -308,12 +319,49 @@ $(function() {
 				refresh_cell(p[0], p[1]);
 			}
 			on_maze_changed();
-			localStorage.setItem("maze", maze_info);
+			localStorage.setItem("maze", MazeToB64(maze_info));
 		}
 		
 		start_cell = null
 		$("#maze tr td").css('border', '1px solid gray');
 	});
+	$("#btnclear").click(function(){
+		for (var i = 0; i < 37; i++) {
+			for (var j = 0; j < 37; j++) {
+				maze_info[i][j]=0;
+			}
+		}
+		refresh_all()
+		on_maze_changed()
+	})
+	$(":button[id^='btnload']").click(function(){
+		btnid = $(this)[0].id.substring(7);
+		console.log("load", btnid)
+
+		var storage_maze = localStorage.getItem("maze" + btnid);
+		if (storage_maze == null) {
+			toastr.error("没有存档")
+			return;
+		}
+		storage_maze = B64ToBin(storage_maze);
+		for(var i = 0; i < 37; i++) {
+			for(var j = 0; j < 37; j++) {
+				var a = storage_maze[i*37+j];
+				if(a == null) a = 0;
+				maze_info[i][j] = a;
+			}
+		}
+		refresh_all()
+		on_maze_changed()
+		toastr.success("读取成功")
+	})
+	$(":button[id^='btnsave']").click(function(){
+		btnid = $(this)[0].id.substring(7);
+		console.log("save", btnid)
+
+		localStorage.setItem("maze" + btnid, MazeToB64(maze_info));
+		toastr.success("保存成功")
+	})
 });
 </script>
 </html>
