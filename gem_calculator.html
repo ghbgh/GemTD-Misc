@@ -1,0 +1,310 @@
+<!-- Copyright (C) 2020 curs0r(小磁怪) -->
+<html>
+<head>
+<meta charset="UTF-8"/>
+<link href="https://cdn.bootcss.com/twitter-bootstrap/3.4.1/css/bootstrap.min.css" rel="stylesheet">
+<!-- <link href="https://cdn.bootcss.com/toastr.js/2.1.4/toastr.css" rel="stylesheet"> -->
+<script type="text/javascript" src="https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js"></script>
+<!-- <script type="text/javascript" src="https://cdn.bootcss.com/toastr.js/2.1.4/toastr.min.js"></script> -->
+</head>
+<body>
+	<div class="panel panel-default container" style="width:500px;height:490px;margin:10px;float:left;">
+		<div class="row" id="btn_list"></div>
+		<div class="row"><hr class="simple" color="#6f5499" style="margin:3px" /></div>
+		<div id="choosed_list"></div>
+	</div>
+	<div class="panel panel-default container" style="overflow-y:scroll;width:500px;height:800px;margin:10px;float:left;">
+		<div class="row" id="ab_btn_list"></div>
+		<div class="row"><hr class="simple" color="#6f5499" style="margin:3px" /></div>
+		<div id="res_list"></div>
+	</div>
+</body>
+<script>
+
+Array.prototype.indexOf = function(val) {
+	for (var i = 0; i < this.length; i++) {
+		if (this[i] == val) return i;
+	}
+	return -1;
+};
+Array.prototype.remove = function(val) { 
+	var index = this.indexOf(val);
+	if (index > -1) {
+		this.splice(index, 1);
+	}
+};
+
+var towers = [
+	["Q",["攻速1"]],
+	["Q6",["攻速2"]],
+	["D6",["伤害5"]],
+	["E6",["光环MAX"]],
+	["G6",["毒药MAX"]],
+	["U235",["辐射","伤害4"]],
+	["U238",["辐射"]],
+	["QH",["辐射","伤害5"]],
+	["YH",["燃尽","折翼3"]],
+	["DH",["伤害MAX","暴击1","金箍棒","望远"]],
+	["PH",["伤害MAX","暴击1","溅射5","减甲MAX","减速3"]],
+	["EH",["鬼畜","坚毅","鼓舞"]],
+	["RH",["叉状闪电","灼烧3","毒药MAX"]],
+	["BH",["冻结2","减速MAX","光环MAX"]],
+	["GH",["毒药MAX","减甲MAX","虚弱2","极寒"]],
+	["镇宅",["伤害MAX","溅射MAX","暴击1"]],
+	["430",["伤害5","分裂箭2"]],
+	["820",["伤害MAX","溅射5","减速5"]],
+	["傲娇虾",["伤害MAX","叉状闪电","连锁闪电","傲娇"]],
+	["鸡血",["叉状闪电","灼烧2"]],
+	["蓝火山",["灼烧3"]],
+	["黄彩",["冻结"]],
+	["豹眼石",["冻结","连环霜冻"]],
+	["黑暗翡翠",["击晕"]],
+	["小碧玺",["虚弱1"]],
+	["大碧玺",["虚弱2","击晕"]],
+	["鸽卵石",["虚弱2","减甲MAX","折翼3"]],
+	["中国玉",["毒药5","回春","折翼1"]],
+	["翡翠魔像",["击晕","腐蚀1","石化凝视","伤害4"]],
+	["埃及金",["贪婪","腐蚀2","伤害4"]],
+	["深海珍珠",["坚毅"]],
+];
+var atk_map = {
+	"伤害1" : 20,
+	"伤害2" : 40,
+	"伤害3" : 80,
+	"伤害4" : 160,
+	"伤害5" : 320,
+	"伤害MAX" : 640,
+}
+var spd_map = {
+	"攻速1" : 200,
+	"攻速2" : 500,
+}
+var not_stealable = {
+	"望远" : true,
+	"贪婪" : true,
+}
+var max_choose_id = 0;
+var choosed_id_list = [];
+var filter_skill = {};
+
+$(function() {
+	for (let i = 0; i < towers.length; i++)
+	{
+		$("#btn_list").append('<button class="btn btn-small btn-primary" id="btn' + i + '">' + towers[i][0] + '</button>');
+	}
+	$("#btn_list button").css('margin','2px');
+	
+	function update_NZ(){
+		let all_abilities = {};
+		let all_abilities_items = [];
+		let filter_skill_num = 0;
+		for (let i = 0; i < choosed_id_list.length; i++)
+		{
+			let tw_id = choosed_id_list[i];
+			let abilities = towers[tw_id][1];
+			for (let j = 0; j < abilities.length; j++)
+			{
+				let ab = abilities[j];
+				if (!not_stealable[ab])
+				{
+					if(all_abilities.hasOwnProperty(ab))
+					{
+						all_abilities[ab]++;
+					} else {
+						all_abilities[ab]=1;
+					}
+				}
+			}
+		}
+		$("#ab_btn_list").empty();
+		$("#res_list").empty();
+		for(let key in all_abilities)
+		{
+			all_abilities_items.push([key, all_abilities[key]]);
+		}
+		all_abilities_items.sort(function(a, b){
+			return a>b;
+		});
+		let filter_skill_new = {};
+		for(let i = 0; i < all_abilities_items.length; i++)
+		{
+			let key = all_abilities_items[i][0];
+			let cls = '';
+			if (filter_skill[key] == true) {
+				filter_skill_num ++;
+				filter_skill_new[key] = true;
+				cls = 'btn-warning';
+			} else {
+				cls = 'btn-info';
+			}
+			
+			$("#ab_btn_list").append('<button class="btn btn-small ' + cls + '" style="margin:2px" id="ft' + key + '">' + key + '</button>');
+		}
+		filter_skill = filter_skill_new;
+		$("#ab_btn_list button").on("mousedown","",function(e){
+			let id = $(this)[0].id.substring(2);
+			if (!filter_skill.hasOwnProperty(id))
+			{
+				filter_skill[id] = true;
+			} else {
+				filter_skill[id] = !filter_skill[id];
+			}
+			update_NZ();
+		})
+		
+		let n = all_abilities_items.length;
+		if (n <= 30)
+		{
+			//n个里面偷3个技能，每个技能出现xi次
+			//一个简单的动态规划, 复杂度大概是 O(n^4*log(n))
+			let q = [];
+			let q2 = [];
+			let dp = {};
+			q.push(0);
+			dp[0] = 1.0;
+			for (let i = 0; i < q.length; i++)
+			{
+				let x = q[i];
+				let c = 0;
+				let sum_n = 0;
+				for (let j = 0; j < n; j++)
+				{
+					if (x >> j & 1)
+					{
+						c++;
+					} else {
+						sum_n += all_abilities_items[j][1];
+					}
+				}
+				for (let j = 0; j < n; j++)
+				{
+					if (x >> j & 1 ^ 1)
+					{
+						let y = x | (1<<j);
+						if (!dp.hasOwnProperty(y))
+						{
+							if (c + 1 == 3 || c + 1 == n) {
+								q2.push(y);
+							} else {
+								q.push(y);
+							}
+							dp[y] = 0;
+						}
+						dp[y] += dp[x] * all_abilities_items[j][1] / sum_n;
+					}
+				}
+			}
+			//回算一下拥有其中1/2个技能的概率 (n>=3 or n>=2)
+			for (let i = q.length - 1; i >= 0; i--)
+			{
+				let x = q[i];
+				dp[x] = 0;
+				for (let j = 0; j < n; j++)
+				{
+					if (x >> j & 1 ^ 1)
+					{
+						let y = x | (1<<j);
+						if (!dp.hasOwnProperty(y))
+						{
+							dp[x] += dp[y];
+						}
+					}
+				}
+			}
+			
+			q2.sort(function(a, b){
+				if(dp[a] == dp[b]) return 0;
+				if(dp[a] < dp[b]) return 1;
+				return -1;
+			});
+			
+			let show_num = 0;
+			let show_end = false;
+			let prob_sum = 0;
+			for(let i = 0; i < q2.length; i++)
+			{
+				let x = q2[i];
+				let skills = [];
+				let prob = dp[x];
+				let cskill = 0;
+				let cfilter = 0;
+				for(let j = 0; j < n; j++)
+				{
+					if(x >> j & 1)
+					{
+						let skill = all_abilities_items[j][0];
+						skills.push(skill);
+						cskill += 1;
+						if (filter_skill[skill] == true)
+							cfilter++;
+					}
+				}
+				
+				if (filter_skill_num != cfilter) continue;
+				prob_sum += prob;
+				
+				if (show_num >= 64) {
+					if (!show_end) {
+						$("#res_list").append('<div class="row">...不显示更多了(共有结果' + q2.length + '种)</div>');
+						show_end = true;
+					}
+					continue;
+				}
+				show_num += 1;
+				
+				$("#res_list").append('<div class="row" id="rres' + i + '"></div>');
+				
+				let row = $("#res_list #rres" + i);
+				let percent = Math.round(prob*100*1000)/1000;
+				row.append('<button class="btn btn-small btn-link">' + percent + '% </button>');
+				for(let j = 0; j < skills.length; j++)
+				{
+					row.append('<button class="btn btn-small btn-success" id="rres' + i + 'v' + j + '">' + skills[j] + '</button>');
+				}
+				//console.log(x, skills, prob);
+			}
+			let prob_percent = Math.round(prob_sum*100*1000)/1000;
+			$("#res_list").prepend('<div class="row">过滤了' + filter_skill_num + '种技能, 总概率为' + prob_percent + '%</div>');
+		}
+	};
+	
+	$("#btn_list button").on("mousedown","",function(e){
+		let id = $(this)[0].id.substring(3);
+		let tw_ = towers[Number(id)];
+		let tname = tw_[0];
+		let tability = tw_[1];
+		if (choosed_id_list.length >= 8) return;
+		$("#choosed_list").append('<div class="row" id="tc' + max_choose_id + '"></div>');
+		let row = $("#choosed_list #tc" + max_choose_id);
+		row.append('<button class="btn btn-small btn-success" style="margin:2px" id="tc' + max_choose_id + 'm">' + tname + '</button>');
+		for (let i = 0; i < tability.length; i++)
+		{
+			let ab = tability[i];
+			let cls = "btn-info";
+			if (not_stealable[ab])
+				cls = "btn-danger";
+			row.append('<button class="btn btn-small ' + cls + '" id="tc' + max_choose_id + 'v' + i + '">' + ab + '</button>');
+		}
+		row.append('<button class="close" id="tcdel' + max_choose_id + '">&times;</button>');
+		choosed_id_list.push(id);
+		
+		
+		$('#choosed_list #tc' + max_choose_id + ' button').on("mousedown","",function(e){
+			let cid = $(this)[0].id;
+			if (cid.substring(0,5) != "tcdel") return;
+			let del_id = cid.substring(5);
+			//console.log(del_id);
+			row.remove();
+			choosed_id_list.remove(id);
+			update_NZ();
+		});
+		max_choose_id++;
+		
+		update_NZ();
+	});
+
+})
+
+
+
+</script>
