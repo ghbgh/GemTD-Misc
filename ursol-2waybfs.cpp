@@ -1,19 +1,20 @@
 
 #include <bits/stdc++.h>
+#include "mvp_formation.h"
 using namespace std;
 
 
-bool CHECK_4MVP = true; //是否要管4max
+//bool CHECK_4MVP = true; //是否要管4max
 
 
-const int N_BASE5 = 27; //digitals of INT64_MAX in Base 5
+const int N_BASE5 = 27;
 int D[8][2] = {{0,1},{-1,1},{-1,0},{-1,-1},{0,-1},{1,-1},{1,0},{1,1}};
 /*
 地图
 0:路; 1:石头; 2:max塔(当然也要吃满max); 3:要吃满max的塔; 4:要吃4max的塔;
 */
 const int N = 7;
-const int M = 8;
+const int M = 7;
 int maze[N][M] = {
     {0, 0, 0, 0, 0, 0, 0, 0},
     {1, 3, 2, 3, 1, 4, 1, 0},
@@ -27,6 +28,7 @@ int maze[N][M] = {
 const int NDATA = (N*M+N_BASE5-1)/N_BASE5;
 
 uint64_t POW[N_BASE5+1] = {0};
+
 
 struct State
 {
@@ -95,52 +97,6 @@ struct hashState
     }
 };
 
-bool check(const State& s)
-{
-    vector<pair<int,int>> v_max;
-    for (int i = 0; i < N; i++)
-    {
-        for (int j = 0; j < M; j++)
-        {
-            if (s.get(i,j) == 2)
-            {
-                v_max.push_back(make_pair(i,j));
-            }
-        }
-    }
-    for (int i = 0; i < N; i++)
-    {
-        for (int j = 0; j < M; j++)
-        {
-            int type = s.get(i,j);
-            if (type == 2 || type == 3 || type == 4)
-            {
-                int c = 0;
-                for (const auto& mx : v_max)
-                {
-                    int dx = abs(mx.first-i);
-                    int dy = abs(mx.second-j);
-                    if (dx <= 2 && dy <= 2 && dx + dy <= 3)
-                    {
-                        c++;
-                    }
-                }
-                if (type == 2 || type == 3)
-                {
-                    if (c < 5)
-                        return false;
-                }
-                if (type == 4 && CHECK_4MVP)
-                {
-                    if (c < 4)
-                        return false;
-                }
-            }
-        }
-    }
-    return true;
-}
-
 int main()
 {
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
@@ -150,13 +106,25 @@ int main()
         POW[i] = i ? POW[i-1]*5:1;
     }
 
+    int mvps = 0, buffed = 0, sub_buffed = 0;
+
     State start{};
+    State all_stone{};
     for (int i = 0; i < N; i++)
     {
         for (int j = 0; j < M; j++)
         {
             assert(maze[i][j] >= 0 && maze[i][j] <= 4);
             start.set(i,j,maze[i][j]);
+
+            if (maze[i][j] == 2)
+                mvps++;
+            if (maze[i][j] == 3)
+                buffed++;
+            if (maze[i][j] == 4)
+                sub_buffed++;
+
+            all_stone.set(i,j,maze[i][j] > 0 ? 1:0);
         }
     }
 
@@ -171,22 +139,121 @@ int main()
 
 
     unordered_map<State, int, hashState> mp;
-    unordered_map<State, State, hashState> mp_rev;
+    unordered_map<State, State, hashState> mp_state;
+    unordered_map<State, pair<int,int>, hashState> mp_action;
+
+    unordered_map<State, int, hashState> mp_rev;
+    unordered_map<State, State, hashState> mp_rev_state;
     unordered_map<State, pair<int,int>, hashState> mp_rev_action;
     mp[start] = 0;
     queue<State> q;
     q.push(start);
-    int maxsteps = -1;
+
+    CMvpFormation MF;
+    int cnt = MF.calc(mvps, buffed, sub_buffed);
+    cout << "target state count:" << cnt << endl;
+    if (cnt == 0)
+    {
+        cout << "impossible to build such formation! mvps:" << mvps << ", buffed:" << buffed << ", sub-buffed" << sub_buffed << endl;
+        return 0;
+    }
+
+    queue<State> q_rev;
+
+    for (int i = 0; i < N-5; i++)
+    {
+        for (int j = 0; j < M-5; j++)
+        {
+            for (const SFormation& f : MF.ans_set)
+            {
+                State target_state = all_stone;
+                int ok = 1;
+                for (int x = 0; x < 5 && ok; x++)
+                {
+                    for (int y = 0; y < 5; y++)
+                    {
+                        if (f.m[x][y] == 0)
+                            continue;
+                        if (target_state.get(i+x, j+y) != 0)
+                        {
+                            target_state.set(i+x, j+y, f.m[x][y]);
+                        } else {
+                            ok = 0;
+                            break;
+                        }
+                    }
+                }
+                if (ok)
+                {
+                    mp_rev[target_state] = 0;
+                    q_rev.push(target_state);
+                }
+            }
+        }
+    }
+
+    if (q_rev.empty())
+    {
+        cout << "impossible to fit such formation into exist stones! mvps:" << mvps << ", buffed:" << buffed << ", " << sub_buffed << endl;
+        return 0;
+    }
+
+    int maxsteps = 0;
+    int maxrevsteps = 0;
+
+    int cnt_states = 0;
+    int cnt_rev_states = 0;
+
+    bool is_rev = false;
     while(true)
     {
-        auto s = q.front();
-        q.pop();
-        int d = mp[s];
+        State s;
+        int d;
 
-        if (d > maxsteps)
+        if (!is_rev)
         {
+            s = q.front();
+            if (mp[s] + 1 > maxsteps)
+            {
+                if (cnt_states > cnt_rev_states)
+                {
+                    is_rev = !is_rev;
+                }
+            }
+        } else {
+            s = q_rev.front();
+            if (mp_rev[s] + 1 > maxrevsteps)
+            {
+                if (cnt_states <= cnt_rev_states)
+                {
+                    is_rev = !is_rev;
+                }
+            }
+        }
+
+        if (!is_rev)
+        {
+            s = q.front();
+            q.pop();
+            d = mp[s];
+            cnt_states ++;
+        } else {
+            s = q_rev.front();
+            q_rev.pop();
+            d = mp_rev[s];
+            cnt_rev_states ++;
+        }
+
+
+        if (!is_rev && d + 1> maxsteps)
+        {
+            maxsteps = d + 1;
             cout << "searching for " << d+1 << " steps..." << endl;
-            maxsteps = d;
+        }
+        if (is_rev && d + 1> maxrevsteps)
+        {
+            maxrevsteps = d + 1;
+            cout << "searching reverse for " << d+1 << " steps..." << endl;
         }
         for(int i = 1; i < N-1; i++)
         {
@@ -206,23 +273,51 @@ int main()
                 }
                 if (v.size() <= 1) continue;
                 State ns = s;
+
+                if (is_rev)
+                {
+                    std::reverse(v.begin(), v.end());
+                }
+
+                //ursol rotate
                 for(int i = 0; i < v.size(); i++)
                 {
                     ns.set(v[(i+1)%v.size()].first, v[(i+1)%v.size()].second, s.get(v[i].first, v[i].second));
                 }
 
-                if(mp.count(ns))
-                    continue;
-
-                mp[ns] = d + 1;
-                mp_rev[ns] = s;
-                mp_rev_action[ns] = make_pair(i,j);
 
 
-
-                if (check(ns))
+                bool found = false;
+                if (!is_rev)
                 {
-                    cout << "found result: " << d+1 << " steps." << endl;
+                    if(mp.count(ns))
+                        continue;
+                    if(mp_rev.count(ns))
+                    {
+                        found = true;
+                    }
+                    mp[ns] = d + 1;
+                    mp_state[ns] = s;
+                    mp_action[ns] = make_pair(i,j);
+                    q.push(ns);
+                } else {
+                    if(mp_rev.count(ns))
+                        continue;
+                    if(mp.count(ns))
+                    {
+                        found = true;
+                    }
+                    mp_rev[ns] = d + 1;
+                    mp_rev_state[ns] = s;
+                    mp_rev_action[ns] = make_pair(i,j);
+                    q_rev.push(ns);
+                }
+
+
+                if (found)
+                {
+                    cout << "found result: " << mp[ns] + mp_rev[ns] << " steps." << endl;
+                    cout << mp[ns] <<' ' << mp_rev[ns]<<endl;
 
 
                     vector<State> v_steps;
@@ -232,12 +327,21 @@ int main()
                     while(true)
                     {
                         v_steps.push_back(xs);
-                        if (!mp_rev.count(xs))
+                        if (!mp_state.count(xs))
                             break;
-                        xs = mp_rev[xs];
+                        xs = mp_state[xs];
                     }
 
                     std::reverse(v_steps.begin(), v_steps.end());
+
+                    xs = ns;
+                    while(true)
+                    {
+                        if (!mp_rev_state.count(xs))
+                            break;
+                        xs = mp_rev_state[xs];
+                        v_steps.push_back(xs);
+                    }
 
                     for(int i = 0; i < v_steps.size(); i++)
                     {
@@ -246,9 +350,13 @@ int main()
                         cout << "Step " << i << ":" <<endl;
 
                         pair<int,int> ac(-1,-1);
-                        if (i+1 < v_steps.size() && mp_rev_action.count(v_steps[i+1]))
+                        if (i+1 < v_steps.size() && mp_action.count(v_steps[i+1]))
                         {
-                            ac = mp_rev_action[v_steps[i+1]];
+                            ac = mp_action[v_steps[i+1]];
+                        }
+                        if (mp_rev_action.count(v_steps[i]))
+                        {
+                            ac = mp_action[v_steps[i]];
                         }
 
                         char nx = ' ';
@@ -276,7 +384,6 @@ int main()
                     goto END;
                 }
 
-                q.push(ns);
             }
         }
     }
