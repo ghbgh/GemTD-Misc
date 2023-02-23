@@ -25,6 +25,23 @@ int maze[N][M] = {
     {0, 0, 0, 1, 0, 0, 0, 0},
 };
 
+
+//const int N = 10;
+//const int M = 11;
+//int maze[N][M] = {
+//    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
+//    {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0},
+//    {1, 1, 3, 2, 3, 1, 4, 1, 0, 1, 0},
+//    {0, 0, 0, 3, 2, 1, 1, 0, 0, 1, 0},
+//    {0, 1, 0, 2, 2, 2, 1, 0, 1, 0, 0},
+//    {1, 0, 0, 3, 1, 1, 4, 0, 0, 1, 0},
+//    {1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0},
+//    {1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0},
+//    {1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0},
+//    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+//};
+
+
 const int NDATA = (N*M+N_BASE5-1)/N_BASE5;
 
 uint64_t POW[N_BASE5+1] = {0};
@@ -90,8 +107,8 @@ struct hashState
         uint64_t r = 0;
         for (int i = 0; i < NDATA; i++)
         {
-            r = (r * 1031) ^ (s.data[0] >> 32);
-            r = (r * 1031) ^ (s.data[0] & INT_MAX);
+            r = (r * 1031) + (s.data[0] >> 32);
+            r = (r * 1031) + (s.data[0] & UINT_MAX);
         }
         return (size_t)r;
     }
@@ -317,7 +334,7 @@ int main()
                 if (found)
                 {
                     cout << "found result: " << mp[ns] + mp_rev[ns] << " steps." << endl;
-                    cout << mp[ns] <<' ' << mp_rev[ns]<<endl;
+                    //cout << mp[ns] <<' ' << mp_rev[ns]<<endl;
 
 
                     vector<State> v_steps;
@@ -389,6 +406,7 @@ int main()
     }
 
 END:
+    cout<<"states searched: " << cnt_states << ", " << cnt_rev_states << endl;
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     cout<<"time elapsed: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "ms" << endl;
     return 0;
