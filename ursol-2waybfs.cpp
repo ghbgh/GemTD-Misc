@@ -356,7 +356,7 @@ int main()
                         }
                         if (mp_rev_action.count(v_steps[i]))
                         {
-                            ac = mp_action[v_steps[i]];
+                            ac = mp_rev_action[v_steps[i]];
                         }
 
                         char nx = ' ';
